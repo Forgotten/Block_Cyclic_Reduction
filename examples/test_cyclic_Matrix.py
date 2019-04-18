@@ -11,7 +11,7 @@ sys.path.insert(0, '../src')
 # importing the Cyclic matrix module 
 from CyclicMatrix import *
 
-nx = 2**8
+nx = 2**10
 ny = 2**4
 h = 1./ny
 # We define the system (in this case a simple 2D heat equation)
@@ -34,7 +34,7 @@ def laplacian_2d(nx: int, ny: int, h: float):
     Lapy = laplacian_1d(ny, h)
     Iy = spsp.spdiags(np.ones(ny), 0, ny, ny)
 
-    Lap2D = spsp.csc_matrix(spsp.kron(Lapx, Iy) + spsp.kron(Ix, Lapy))
+    Lap2D = spsp.csc_matrix(spsp.kron(Iy, Lapx) + spsp.kron(Lapy, Ix))
 
     return Lap2D
 
