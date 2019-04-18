@@ -385,6 +385,7 @@ def backsubs(x, xO, E, Dinv, F, IdxO, n, nblocks):
         if jj > 0:
             x[idxBlk(jj, n)] -= Dinv[ii].dot(E[jj].dot(xO[idxBlk(ii-1, n)]))
 
+
 class CyclicSparseMatrix:
     def __init__(self, n, nblocks, E, D, F):
         # we want to make sure that the size of the blocks are good
@@ -414,7 +415,6 @@ class CyclicSparseMatrix:
 
         return Ax
 
-    # this one is definitely faster
     def dot(self, X):
         # dot product with a vector
         assert (X.shape[0] == self.n * self.nblocks)
@@ -427,12 +427,19 @@ class CyclicSparseMatrix:
                                    self.F[0] @ X[idxBlk(0 + 1, self.n), :]
 
         for ii in range(1, self.nblocks-1):
-            Ax[idxBlk(ii, self.n), :] = self.D[ii] @ X[idxBlk(ii, self.n), :] + \
-                                        self.E[ii] @ X[idxBlk(ii - 1, self.n), :] +\
-                                        self.F[ii] @ X[idxBlk(ii + 1, self.n), :]
+            Ax[idxBlk(ii, self.n), :] = self.D[ii] @ X[idxBlk(ii,
+                                                              self.n), :] + \
+                                        self.E[ii] @ X[idxBlk(ii - 1,
+                                                              self.n), :] + \
+                                        self.F[ii] @ X[idxBlk(ii + 1,
+                                                              self.n), :]
 
-        Ax[idxBlk(self.nblocks-1, self.n), :] = self.D[self.nblocks-1] @ X[idxBlk(self.nblocks-1, self.n), :] + \
-                                       self.E[self.nblocks-1] @ X[idxBlk(self.nblocks-2, self.n), :]
+        Ax[idxBlk(self.nblocks-1, self.n), :] = self.D[self.nblocks-1] @ \
+                                                X[idxBlk(self.nblocks-1,
+                                                         self.n), :] + \
+                                                self.E[self.nblocks-1] @ \
+                                                X[idxBlk(self.nblocks-2,
+                                                         self.n), :]
 
         return Ax
 
@@ -444,7 +451,7 @@ class CyclicSparseMatrix:
             # if we are in a leaf, i.e. we are dealing with a dense matrix
             self.Dinv.append(la.inv(self.D[0].toarray()))
         else:
-            # defing the indices
+            # defining the indices
             IdxO = np.arange(0, self.nblocks, 2)
             IdxE = np.arange(1, self.nblocks, 2)
 
@@ -454,9 +461,7 @@ class CyclicSparseMatrix:
             for ii in range(len(IdxO)):
                 Dinv.append(spla.factorized(self.D[IdxO[ii]]))
 
-            E = []
-            D = []
-            F = []
+            E, D, F = [], [], []
 
             for ii in range(len(IdxE)):
 
@@ -476,13 +481,11 @@ class CyclicSparseMatrix:
                 if jj > 0 and ii > 0:
                     Elocal = - self.E[jj].dot(Dinv[ii](self.E[jj - 1].toarray()))
                 else:
-                    # Elocal = spsp.csr_matrix((self.n, self.n), dtype=float)
                     Elocal = np.zeros((self.n, self.n))
 
                 if jj < self.nblocks - 1 and ii < len(IdxE) - 1:
                     Flocal = - self.F[jj].dot(Dinv[ii + 1](self.F[jj + 1].toarray()))
                 else:
-                    # Flocal = spsp.csr_matrix((self.n, self.n), dtype=float)
                     Flocal = np.zeros((self.n, self.n))
 
                 E.append(Elocal)
@@ -507,7 +510,6 @@ class CyclicSparseMatrix:
             print("Matrix was not factorized, we proceed to factorize it")
             self.factorize()
 
-
         # this is going to be called recursively
         if self.nblocks == 1:
             return self.Dinv[0](b)
@@ -525,7 +527,8 @@ class CyclicSparseMatrix:
         x = np.zeros((self.n * self.nblocks, m))
 
         for ii in range(len(IdxO)):
-            xO[idxBlk(ii, self.n), :] = self.Dinv[ii](b[idxBlk(IdxO[ii], self.n), :])
+            xO[idxBlk(ii, self.n), :] = self.Dinv[ii](b[idxBlk(IdxO[ii],
+                                                               self.n), :])
 
         for ii in range(len(IdxE)):
             jj = IdxE[ii]
@@ -533,10 +536,12 @@ class CyclicSparseMatrix:
 
             if jj > 0:  # this should never be false, but just in case
                 # update the rhs
-                bE[idxBlk(ii, self.n), :] -= self.E[jj].dot(xO[idxBlk(ii, self.n), :])
+                bE[idxBlk(ii, self.n), :] -= self.E[jj] @ \
+                                             xO[idxBlk(ii, self.n), :]
             if jj < self.nblocks - 1:  # this can be true
                 # update the rhs
-                bE[idxBlk(ii, self.n), :] -= self.F[jj].dot(xO[idxBlk(ii+1, self.n), :])
+                bE[idxBlk(ii, self.n), :] -= self.F[jj] @ \
+                                             xO[idxBlk(ii+1, self.n), :]
 
         xE = self.C.solve_opt_c(bE)
 
@@ -548,8 +553,12 @@ class CyclicSparseMatrix:
             jj = IdxO[ii]
             x[idxBlk(jj, self.n), :] += xO[idxBlk(ii, self.n), :]
             if jj < self.nblocks - 1:
-                x[idxBlk(jj, self.n), :] -= self.Dinv[ii](self.F[jj].dot(x[idxBlk(jj+1, self.n), :]))
+                x[idxBlk(jj, self.n), :] -= self.Dinv[ii](self.F[jj] @
+                                                          x[idxBlk(jj+1,
+                                                                   self.n), :])
             if jj > 0:
-                x[idxBlk(jj, self.n), :] -= self.Dinv[ii](self.E[jj].dot(x[idxBlk(jj-1, self.n), :]))
+                x[idxBlk(jj, self.n), :] -= self.Dinv[ii](self.E[jj] @
+                                                          x[idxBlk(jj-1,
+                                                                   self.n), :])
 
         return x
