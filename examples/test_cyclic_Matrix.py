@@ -11,24 +11,35 @@ sys.path.insert(0, '../src')
 # importing the Cyclic matrix module 
 from CyclicMatrix import *
 
-nx = 2**12
-ny = 16
+nx = 2**8
+ny = 2**4
 h = 1./ny
+# We define the system (in this case a simple 2D heat equation)
 
-# 1D Laplacian type
 
-diag0 = 2*np.ones(nx)
-diag1 = -np.ones(nx)
-Lapx = (1/h**2)*spsp.spdiags([diag1, diag0, diag1], [-1,0,1], nx,nx)
-Ix = spsp.spdiags(np.ones(nx), 0, nx, nx)
+def laplacian_1d(n: int, h: float):
+    # function to compute the 1d Laplacian
+    diag0 = 2*np.ones(n)
+    diag1 = -np.ones(n)
+    Lap = (1/h**2)*spsp.spdiags([diag1, diag0, diag1], [-1,0,1], n, n)
 
-diag0 = 2*np.ones(ny)
-diag1 = -np.ones(ny)
-Lapy = (1/h**2)*spsp.spdiags([diag1, diag0, diag1], [-1,0,1], ny,ny)
-Iy = spsp.spdiags(np.ones(ny), 0, ny, ny)
+    return Lap
 
-Lap2D = spsp.csc_matrix(spsp.kron(Lapx, Iy) + spsp.kron(Ix, Lapy))
 
+def laplacian_2d(nx: int, ny: int, h: float):
+
+    Lapx = laplacian_1d(nx, h)
+    Ix = spsp.spdiags(np.ones(nx), 0, nx, nx)
+
+    Lapy = laplacian_1d(ny, h)
+    Iy = spsp.spdiags(np.ones(ny), 0, ny, ny)
+
+    Lap2D = spsp.csc_matrix(spsp.kron(Lapx, Iy) + spsp.kron(Ix, Lapy))
+
+    return Lap2D
+
+
+Lap2D = laplacian_2d(nx, ny, h)
 #
 rhs = np.random.rand(Lap2D.shape[0])
 
